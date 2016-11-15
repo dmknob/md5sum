@@ -4,7 +4,8 @@ import (
     "crypto/md5"
     "encoding/hex"
     "fmt"
-    "io/ioutil"
+    "io"
+    //"io/ioutil"
     "os"
     "path/filepath" //To slit the filename from filepath
     "strings"
@@ -17,7 +18,7 @@ var checkFlag = false
 var genFlag = false
 var helpFlag = false
 var printFlag = false
-var computedMD5 [16]byte
+var computedMD5 = ""
 
 //Check for errors and panic case detect
 func check(e error) {
@@ -69,18 +70,37 @@ func init() { //Runs before main(). Useful to parse os.Args (commandline params)
 
 func fnComputeMD5() {
     pL("Computing MD5 of " + filePath)
-    dat, err := ioutil.ReadFile(filePath) //Reads the file
+    /*dat, err := ioutil.ReadFile(filePath) //Reads the file
     check(err)
     computedMD5 = md5.Sum(dat) //Calculates de MD5
-    pL(hex.EncodeToString(computedMD5[:]))
+    */
+    
+    /*h := md5.New()
+    //io.WriteString(h, "The fog is getting thicker!")
+    dat, err := ioutil.ReadFile(filePath)
+    io.WriteString(h, string(dat))
+    check(err)
+    fmt.Printf("%x", h.Sum(nil))
+    pL()
+    computedMD5 := h.Sum(nil)*/
+
+    file, err := os.Open(filePath)
+    check(err)
+    defer file.Close()
+    hash := md5.New()
+    _, err = io.Copy(hash, file)
+    hashInBytes := hash.Sum(nil)[:16]
+    computedMD5 = hex.EncodeToString(hashInBytes)
+    pL(computedMD5)
+    //pL(hex.EncodeToString(computedMD5[:]))
 }
 
 func fnCreateFile() {
     fileName := filepath.Base(filePath)   //Get the filename
-    f, err := os.Create(fileName+".txt")  //Create a new file to hold de MD5 hash
+    f, err := os.Create(filePath+".txt")  //Create a new file to hold de MD5 hash
     check(err)
     defer f.Close() //We must close the file when will not be in use (in this case, when main() exits)
-    _, err = f.WriteString(hex.EncodeToString(computedMD5[:]) + "  " + fileName)
+    _, err = f.WriteString(computedMD5 + "  " + fileName)
     check(err)
     f.Sync()
 }
@@ -97,7 +117,7 @@ func fnReadMD5() {
 }
 
 func fnCompareMD5(savedMD5 []byte) {
-    if strings.Compare(hex.EncodeToString(computedMD5[:]), string(savedMD5)) == 0 {
+    if strings.Compare(computedMD5, string(savedMD5)) == 0 {
         pL("All OK, the MD5 hash matches the saved one.")
     } else {
         pL("Houston, you have a problem! MD5 hash of file does not match the saved one.")
