@@ -5,7 +5,6 @@ import (
     "encoding/hex"
     "fmt"
     "io"
-    //"io/ioutil"
     "os"
     "path/filepath" //To slit the filename from filepath
     "strings"
@@ -13,12 +12,14 @@ import (
 
 //Globals
 var pL = fmt.Println //Alias for print Line
+var computedMD5 = ""
+var savedMD5 = ""
 var filePath = ""   //Store the path and filename of file
 var checkFlag = false
 var genFlag = false
 var helpFlag = false
 var printFlag = false
-var computedMD5 = ""
+
 
 //Check for errors and panic case detect
 func check(e error) {
@@ -36,20 +37,12 @@ func helpPrint() {
 }
 
 func init() { //Runs before main(). Useful to parse os.Args (commandline params)
-/*Flags:
-    -h --help
-    -c --check
-    -g --generate
-    -p --print
-*/
     var n = len(os.Args) //Number of arguments passed on program start
     switch {
     case n < 2 :
         helpPrint()
         pL("\nYou must pass at least a filename to compute the MD5!")
         os.Exit(2)
-
-    //case n == 2:
 
     case n == 3:
             if os.Args[1] == "-c" || os.Args[1] == "--check" {
@@ -70,20 +63,6 @@ func init() { //Runs before main(). Useful to parse os.Args (commandline params)
 
 func fnComputeMD5() {
     pL("Computing MD5 of " + filePath)
-    /*dat, err := ioutil.ReadFile(filePath) //Reads the file
-    check(err)
-    computedMD5 = md5.Sum(dat) //Calculates de MD5
-    */
-    
-    /*h := md5.New()
-    //io.WriteString(h, "The fog is getting thicker!")
-    dat, err := ioutil.ReadFile(filePath)
-    io.WriteString(h, string(dat))
-    check(err)
-    fmt.Printf("%x", h.Sum(nil))
-    pL()
-    computedMD5 := h.Sum(nil)*/
-
     file, err := os.Open(filePath)
     check(err)
     defer file.Close()
@@ -92,7 +71,6 @@ func fnComputeMD5() {
     hashInBytes := hash.Sum(nil)[:16]
     computedMD5 = hex.EncodeToString(hashInBytes)
     pL(computedMD5)
-    //pL(hex.EncodeToString(computedMD5[:]))
 }
 
 func fnCreateFile() {
@@ -112,12 +90,11 @@ func fnReadMD5() {
     storedHash := make([]byte, 32)  //Allocate space to stored MD5 hash
     _, err = f.Read(storedHash)
     check(err)
-    fnCompareMD5(storedHash)  //Compare computedMD5 with savedMD5 and print result
-
+    savedMD5 = string(storedHash)
 }
 
-func fnCompareMD5(savedMD5 []byte) {
-    if strings.Compare(computedMD5, string(savedMD5)) == 0 {
+func fnCompareMD5() {
+    if strings.Compare(computedMD5, savedMD5) == 0 {
         pL("All OK, the MD5 hash matches the saved one.")
     } else {
         pL("Houston, you have a problem! MD5 hash of file does not match the saved one.")
@@ -133,7 +110,8 @@ func generate() {   //Compute the MD5sum of 'filename' and store it inside new f
 
 func checkMD5() {   //Open 'filename'.txt, read savedMD5, open 'filename', compute MD5 (computedMD5), compare and print result
     fnComputeMD5()  //open 'filename', compute MD5 (computedMD5)
-    fnReadMD5()     //open 'filename'.txt, get savedMD5, call fnCompareMD5
+    fnReadMD5()     //open 'filename'.txt, get savedMD5
+    fnCompareMD5()  //Compare computedMD5 with savedMD5 and print result
 }
 
 func main() {
